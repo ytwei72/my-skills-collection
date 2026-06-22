@@ -15,7 +15,8 @@
 
 * **加工层**（两种模式都可用，全部由 PyMuPDF 完成，便于 CJK 字体与不透明度控制）：
     - 页眉/页脚/页码（模板含 ``{title} {page} {pages} {date}`` 占位符）
-    - 由 HTML 标题层级自动生成书签大纲（TOC）
+    - PDF 书签（`--bookmarks`）：按 HTML 标题写阅读器侧栏大纲，不改正文
+    - PDF 目录（`--toc`）：剥离 HTML 文内目录，paged 模式插入带页码的目录页
     - 文字水印（斜向、可调不透明度）
     - PDF 元数据（标题/作者/主题/关键词）
     - 加密（AES-256，用户/所有者密码）
@@ -86,6 +87,26 @@ REMOTE_URL = re.compile(r"^(?:https?:|data:|//|/)", re.I)
 REL_REF = re.compile(r'(?:src|href|poster)\s*=\s*(["\'])([^"\']+)\1', re.I)
 HEADING_RE = re.compile(r"<h([1-6])\b[^>]*>(.*?)</h\1>", re.I | re.S)
 TAG_RE = re.compile(r"<[^>]+>")
+
+# 文内目录块：仅 --toc（且未指定 --bookmarks）时从 HTML 剥离，改由 PDF 目录页呈现
+HTML_TOC_BLOCK_RES = [
+    re.compile(
+        r"<nav\b[^>]*\bclass\s*=\s*[\"'][^\"']*\btoc\b[^\"']*[\"'][^>]*>.*?</nav>",
+        re.I | re.S,
+    ),
+    re.compile(
+        r"<(?:section|div|aside)\b[^>]*\b(?:id|class)\s*=\s*[\"'][^\"']*"
+        r"\b(?:toc|table-of-contents|table_of_contents)\b[^\"']*[\"'][^>]*>"
+        r".*?</(?:section|div|aside)>",
+        re.I | re.S,
+    ),
+]
+HTML_TOC_HIDE_CSS = """
+  nav.toc, #toc, .toc, .table-of-contents, .table_of_contents,
+  [class*="table-of-contents"], section.toc, aside.toc {
+    display: none !important;
+  }
+"""
 
 # 注入到 </head> 之前的打印样式。两种模式共享前半段（颜色保真、关动画、
 # 显示 scroll-reveal、玻璃拟态降级），@page 由各模式分别拼接。
@@ -221,9 +242,18 @@ def build_page_css(mode, *, width, bedrock, paper, landscape, margin_mm, scale):
             f"margin: {t}mm {r}mm {b}mm {l}mm; }}")
 
 
-def inject_css(html, page_css, extra_css):
+def remove_html_toc_blocks(html):
+    """剥离 HTML 文内目录块，避免与 PDF 目录页重复。"""
+    out = html
+    for pat in HTML_TOC_BLOCK_RES:
+        out = pat.sub("", out)
+    return out
+
+
+def inject_css(html, page_css, extra_css, *, hide_html_toc=False):
+    toc_css = HTML_TOC_HIDE_CSS if hide_html_toc else ""
     block = (f"<style data-html-pdf-studio>\n{page_css}\n"
-             f"{COMMON_PRINT_CSS}\n{extra_css}\n</style>\n</head>")
+             f"{COMMON_PRINT_CSS}\n{toc_css}\n{extra_css}\n</style>\n</head>")
     return html.replace("</head>", block, 1)
 
 
@@ -306,7 +336,36 @@ def crop_to_content(doc, padding_px, crop_mode):
     box = f"[{mb.x0:.2f} {mb.y1 - new_h:.2f} {mb.x1:.2f} {mb.y1:.2f}]"
     doc.xref_set_key(page.xref, "MediaBox", box)
     doc.xref_set_key(page.xref, "CropBox", box)
+    normalize_page_origin(doc)
     return new_h
+
+
+def normalize_page_origin(doc):
+    """裁切后把页面压平到 MediaBox [0,0,w,h]。
+
+    crop_to_content 只改页面框、不移动内容流，MediaBox.y0 常为非零；书签
+    dest 会写成 mediabox.y0 + y，WPS 等阅读器按 0 起算时会全部跳到页首。
+    用 show_pdf_page 把可见区重绘到原点，search_for 与书签坐标即一致。
+    """
+    if doc.page_count != 1:
+        return
+    page = doc[0]
+    mb = page.mediabox
+    if abs(mb.x0) < 0.01 and abs(mb.y0) < 0.01:
+        return
+    visible = page.rect
+    w, h = visible.width, visible.height
+    flat = pymupdf.open()
+    fp = flat.new_page(width=w, height=h)
+    fp.show_pdf_page(fp.rect, doc, 0, clip=visible)
+    doc.delete_page(0)
+    doc.insert_pdf(flat)
+    flat.close()
+
+
+def want_pdf_toc(args):
+    """是否生成 PDF 目录页（剥离 HTML 文内目录）。--bookmarks 优先时返回 False。"""
+    return args.toc and not args.bookmarks
 
 
 def render_one(browser, html, src_dir, workdir, idx, args, page_css_kwargs):
@@ -317,6 +376,7 @@ def render_one(browser, html, src_dir, workdir, idx, args, page_css_kwargs):
     if "</head>" not in html:
         sys.exit(f"输入 #{idx} 缺少 </head>，无法注入打印 CSS")
 
+    hide_html_toc = want_pdf_toc(args)
     stage_local_assets(html, src_dir, workdir)
     tmp_pdf = workdir / f"render-{idx}.pdf"
 
@@ -325,7 +385,8 @@ def render_one(browser, html, src_dir, workdir, idx, args, page_css_kwargs):
         for attempt in range(args.max_retries + 1):
             page_css = build_page_css("continuous",
                                       bedrock=bedrock, **page_css_kwargs)
-            injected = inject_css(html, page_css, extra_css)
+            injected = inject_css(html, page_css, extra_css,
+                                  hide_html_toc=hide_html_toc)
             tmp_html = workdir / f"in-{idx}.html"
             tmp_html.write_text(injected, encoding="utf-8")
             render(browser, tmp_html, tmp_pdf, args.width, args.virtual_time, args.scale)
@@ -342,7 +403,7 @@ def render_one(browser, html, src_dir, workdir, idx, args, page_css_kwargs):
 
     # paged 模式：正常分页，不裁切
     page_css = build_page_css("paged", bedrock=0, **page_css_kwargs)
-    injected = inject_css(html, page_css, extra_css)
+    injected = inject_css(html, page_css, extra_css, hide_html_toc=hide_html_toc)
     tmp_html = workdir / f"in-{idx}.html"
     tmp_html.write_text(injected, encoding="utf-8")
     render(browser, tmp_html, tmp_pdf, args.width, args.virtual_time, args.scale)
@@ -439,10 +500,11 @@ def stamp_watermark(doc, text, opacity, font_size):
         tw.write_text(page, morph=(pivot, mat))
 
 
-def build_toc(doc, html, depth):
-    """从 HTML 抽取 h1..hN 标题，按出现顺序在 PDF 文本里定位，生成书签大纲。"""
+def extract_headings(html, depth):
+    """从 HTML 抽取 h1..hN 标题（已剥离文内目录块）。"""
+    cleaned = remove_html_toc_blocks(html)
     headings = []
-    for m in HEADING_RE.finditer(html):
+    for m in HEADING_RE.finditer(cleaned):
         level = int(m.group(1))
         if level > depth:
             continue
@@ -451,35 +513,172 @@ def build_toc(doc, html, depth):
         text = re.sub(r"\s+", " ", text)
         if text:
             headings.append((level, text))
-    if not headings:
-        return 0
+    return headings
 
-    # 建立全文搜索游标：同名标题映射到后续出现位置
-    page_hits = [page.get_text("words") for page in doc]  # 仅用于存在性兜底
-    toc = []
+
+def _pick_heading_y(rects, min_y):
+    """多命中时取阅读顺序上位于上一书签之后的第一个（避免文内交叉引用抢先）。"""
+    if not rects:
+        return None
+    ordered = sorted(rects, key=lambda r: r.y0)
+    for r in ordered:
+        if r.y0 >= min_y - 0.5:
+            return r.y0
+    return ordered[-1].y0
+
+
+def locate_headings(doc, headings):
+    """在 PDF 文本层定位标题，返回 [(level, text, page_0based, y), ...]。"""
+    located = []
     cursor_page = 0
+    min_y = 0.0
     for level, text in headings:
         found = None
-        probe = text[:40]  # 长标题截断，提高 search_for 命中率
+        probe = text[:40]
         for pno in range(cursor_page, doc.page_count):
             rects = doc[pno].search_for(probe, quads=False)
-            if rects:
-                found = (pno, rects[0].y0)
+            floor = min_y if pno == cursor_page else 0.0
+            y = _pick_heading_y(rects, floor)
+            if y is not None:
+                found = (pno, y)
                 cursor_page = pno
+                min_y = y
                 break
         if found is None:
-            # 兜底：从头再找一次
             for pno in range(doc.page_count):
                 rects = doc[pno].search_for(probe, quads=False)
-                if rects:
-                    found = (pno, rects[0].y0)
+                y = _pick_heading_y(rects, min_y)
+                if y is not None:
+                    found = (pno, y)
+                    cursor_page = pno
+                    min_y = y
                     break
         if found is None:
-            found = (cursor_page, 0)
+            found = (cursor_page, min_y)
         pno, y = found
-        toc.append([level, text, pno + 1, {"kind": 1, "to": pymupdf.Point(0, y)}])
+        located.append((level, text, pno, y))
+    return located
+
+
+def apply_bookmarks(doc, located, page_offset):
+    """按已定位标题写入书签大纲，page_offset 为文前插入的目录页数。"""
+    toc = []
+    for level, text, pno, y in located:
+        toc.append([level, text, pno + 1 + page_offset,
+                    {"kind": 1, "to": pymupdf.Point(0, y)}])
     doc.set_toc(toc)
     return len(toc)
+
+
+def _toc_lines_per_page(page_h, margin_top, margin_bottom, line_h):
+    usable = page_h - margin_top - margin_bottom
+    return max(1, int(usable / line_h))
+
+
+def _draw_toc_line(page, font, size, x_left, x_right, y, level, text, page_no,
+                   indent_pt):
+    """绘制一行目录：缩进标题 + 点线 + 右对齐页码。"""
+    x = x_left + (level - 1) * indent_pt
+    num = str(page_no)
+    num_w = font.text_length(num, fontsize=size)
+    max_text_w = x_right - num_w - 8 - x
+    display = text
+    while display and font.text_length(display + "…", fontsize=size) > max_text_w:
+        display = display[:-1]
+    if display != text and display:
+        display += "…"
+    tw = pymupdf.TextWriter(page.rect, color=(0.1, 0.1, 0.1))
+    tw.append((x, y), display, font=font, fontsize=size)
+    tw.write_text(page)
+    # 点引导符
+    text_w = font.text_length(display, fontsize=size)
+    dot_x0 = x + text_w + 4
+    dot_x1 = x_right - num_w - 4
+    if dot_x1 > dot_x0 + 6:
+        dot = "."
+        dot_w = font.text_length(dot, fontsize=size)
+        n_dots = max(3, int((dot_x1 - dot_x0) / dot_w))
+        tw2 = pymupdf.TextWriter(page.rect, color=(0.55, 0.55, 0.55))
+        tw2.append((dot_x0, y), dot * n_dots, font=font, fontsize=size)
+        tw2.write_text(page)
+    tw3 = pymupdf.TextWriter(page.rect, color=(0.1, 0.1, 0.1))
+    tw3.append((x_right - num_w, y), num, font=font, fontsize=size)
+    tw3.write_text(page)
+
+
+def insert_pdf_toc_pages(doc, located, title="目录", *, title_size=20.0,
+                         body_size=11.0, line_h=17.0, indent_pt=14.0):
+    """在文前插入 PDF 目录页（paged 模式）。返回插入的页数。
+
+    located: [(level, text, page_0based, y), ...]，定位基于插入目录页之前。
+    目录行上的页码 = 正文中的 1-based 页码 + 将插入的目录页数。
+    """
+    if not located or doc.page_count == 0:
+        return 0
+
+    ref = doc[0].rect
+    w, h = ref.width, ref.height
+    margin_x = 56.0
+    margin_top = 64.0
+    margin_bottom = 56.0
+    x_left, x_right = margin_x, w - margin_x
+
+    # 估算所需目录页数（标题占 2 行 + 每条目 1 行）
+    lpp = _toc_lines_per_page(h, margin_top, margin_bottom, line_h)
+    lines_needed = 2 + len(located)
+    num_pages = max(1, (lines_needed + lpp - 1) // lpp)
+
+    for _ in range(num_pages):
+        doc.insert_page(0, width=w, height=h)
+
+    sample = title + "".join(t for _, t, _, _ in located)
+    font = _make_font(sample)
+    y = margin_top + title_size
+
+    # 目录标题
+    title_w = font.text_length(title, fontsize=title_size)
+    page0 = doc[0]
+    tw_title = pymupdf.TextWriter(page0.rect, color=(0.05, 0.05, 0.05))
+    tw_title.append(((w - title_w) / 2, y), title, font=font, fontsize=title_size)
+    tw_title.write_text(page0)
+    y += line_h * 1.6
+
+    page_idx = 0
+    for level, text, _pno, _y in located:
+        if y + line_h > h - margin_bottom:
+            page_idx += 1
+            if page_idx >= num_pages:
+                break
+            y = margin_top
+        page_no = _pno + 1 + num_pages  # 最终文档中的 1-based 页码
+        _draw_toc_line(doc[page_idx], font, body_size, x_left, x_right, y,
+                       level, text, page_no, indent_pt)
+        y += line_h
+
+    return num_pages
+
+
+def build_bookmarks(doc, html, depth):
+    """仅写 PDF 书签大纲：不改正文、不插目录页。返回书签条数。"""
+    headings = extract_headings(html, depth)
+    if not headings:
+        return 0
+    located = locate_headings(doc, headings)
+    return apply_bookmarks(doc, located, 0)
+
+
+def build_toc(doc, html, depth, *, mode="continuous", toc_title="目录"):
+    """生成 PDF 目录页：剥离 HTML 文内目录；paged 插入目录页；同步写书签。返回 (书签数, 目录页数)。"""
+    headings = extract_headings(html, depth)
+    if not headings:
+        return 0, 0
+
+    located = locate_headings(doc, headings)
+    toc_pages = 0
+    if mode == "paged":
+        toc_pages = insert_pdf_toc_pages(doc, located, title=toc_title)
+    bookmark_n = apply_bookmarks(doc, located, toc_pages)
+    return bookmark_n, toc_pages
 
 
 def make_preview(doc, out_png, dpi=60):
@@ -542,8 +741,13 @@ def main():
     ap.add_argument("--header", help="页眉模板，支持 {title}{page}{pages}{date} 与 '左|中|右' 三段对齐")
     ap.add_argument("--footer", help="页脚模板，同上")
     ap.add_argument("--hf-font-size", type=float, default=9.0, help="页眉页脚字号 pt，默认 9")
-    ap.add_argument("--toc", action="store_true", help="由 HTML 标题生成书签大纲")
-    ap.add_argument("--toc-depth", type=int, default=3, help="大纲层级深度 h1..hN，默认 3")
+    ap.add_argument("--bookmarks", action="store_true",
+                    help="仅生成 PDF 书签大纲（阅读器侧栏），不改正文、不插目录页；优先于 --toc")
+    ap.add_argument("--toc", action="store_true",
+                    help="生成 PDF 目录页：剥离 HTML 文内目录，插入目录页(paged)并写书签")
+    ap.add_argument("--toc-depth", type=int, default=3,
+                    help="书签/目录的标题层级深度 h1..hN，默认 3")
+    ap.add_argument("--toc-title", default="目录", help="PDF 目录页标题，默认「目录」")
     ap.add_argument("--watermark", help="文字水印(斜向平铺)")
     ap.add_argument("--watermark-opacity", type=float, default=0.12, help="水印不透明度，默认 0.12")
     ap.add_argument("--watermark-size", type=float, default=60.0, help="水印字号 pt，默认 60")
@@ -556,6 +760,8 @@ def main():
     ap.add_argument("--preview", action="store_true", help="额外导出 <output>.png 首页缩略图自检")
     ap.add_argument("--keep-temp", action="store_true")
     args = ap.parse_args()
+    if args.bookmarks and args.toc:
+        print("提示: 同时指定 --bookmarks 与 --toc，按 --bookmarks 处理（不插目录页、保留 HTML 文内目录）")
 
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -576,16 +782,18 @@ def main():
 
     try:
         merged = pymupdf.open()
-        first_html_for_toc = None
+        first_html_for_outline = None
         for idx, spec in enumerate(args.inputs):
             html, src_dir = load_source(spec, workdir, idx)
             if args.replace:
                 html = apply_replacements(html, args.replace)
+            if want_pdf_toc(args):
+                html = remove_html_toc_blocks(html)
             if args.forbid:
                 n = check_forbidden(html, args.forbid, f"输入#{idx} HTML(替换后)")
                 print(f"禁词检测(html#{idx}): {n} 词，干净")
-            if first_html_for_toc is None:
-                first_html_for_toc = html
+            if first_html_for_outline is None:
+                first_html_for_outline = html
             doc = render_one(browser, html, src_dir, workdir, idx, args, page_css_kwargs)
             merged.insert_pdf(doc)
             doc.close()
@@ -606,10 +814,16 @@ def main():
         if meta:
             merged.set_metadata(meta)
 
-        # 书签大纲（基于合并后整本搜索，单输入时最准）
-        toc_n = 0
-        if args.toc:
-            toc_n = build_toc(merged, first_html_for_toc, args.toc_depth)
+        bookmark_n = 0
+        toc_pages = 0
+        if args.bookmarks:
+            bookmark_n = build_bookmarks(
+                merged, first_html_for_outline, args.toc_depth)
+        elif args.toc:
+            bookmark_n, toc_pages = build_toc(
+                merged, first_html_for_outline, args.toc_depth,
+                mode=args.mode, toc_title=args.toc_title,
+            )
 
         # 页眉页脚 / 水印
         stamp_header_footer(merged, args.header, args.footer,
@@ -656,7 +870,8 @@ def main():
         size_kb = dest.stat().st_size / 1024
         print(f"OK {merged.page_count} 页, 首页 {page0.width:.0f}x{page0.height:.0f}pt, "
               f"{size_kb:.0f} KB, 模式={args.mode}"
-              + (f", 书签 {toc_n} 条" if toc_n else "")
+              + (f", 目录页 {toc_pages}" if toc_pages else "")
+              + (f", 书签 {bookmark_n} 条" if bookmark_n else "")
               + f" -> {dest}")
         if args.mode == "continuous" and page0.height > ACROBAT_LIMIT_PT:
             print(f"提示: 页高 {page0.height:.0f}pt 超过 14400pt 的 Acrobat 上限；"

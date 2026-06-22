@@ -136,6 +136,9 @@ Chrome 149）；老版本可用 `--replace` 改成 `loading="eager"`。
 - MediaBox 与 CropBox 用 `xref_set_key` 在原始 PDF（y-up）坐标里改写成同一
   矩形。这样既绕开 PyMuPDF `set_mediabox` 删除 CropBox 的副作用，也消除"有的
   查看器看 MediaBox、有的看 CropBox∩MediaBox"的歧义。
+- 裁切后紧跟 `normalize_page_origin`：用 `show_pdf_page` 把可见区重绘到
+  `[0,0,w,h]`。否则 MediaBox.y0 非零，书签 dest 为大数值绝对坐标，WPS 等阅读器
+  会全部跳到页首。
 
 ## 后期加工内幕（PyMuPDF）
 
@@ -144,10 +147,14 @@ Chrome 149）；老版本可用 `--replace` 改成 `loading="eager"`。
 
 - **页眉/页脚**：用 `TextWriter` 逐页写。模板支持 `{title}{page}{pages}{date}`
   占位符与 `左|中|右` 三段对齐语法。页码基于合并后整本计数。
-- **书签大纲（TOC）**：正则抽取 HTML 的 `h1..hN`（剥标签、反转义、压空白），
-  按出现顺序用 `page.search_for` 在 PDF 文本里定位首次出现，构造嵌套
-  `set_toc`。标题超 40 字会截断以提高命中率；找不到则兜底从头再搜一次。
-  *因此目录依赖文本层——若标题被栅格化（见保真损失）则定位不到。*
+- **PDF 书签（`--bookmarks`）**：从 HTML 抽取 `h1..hN`（抽取时忽略 `nav.toc` 内
+  标题以免重复），在 PDF 文本层定位后 `set_toc`。**不改正文、不插页**；与
+  continuous/paged 无关。同时指定 `--toc` 时**书签优先**。
+- **PDF 目录（`--toc`）**：渲染前剥离 HTML 文内目录块；**paged** 在文前插入目录页
+  （层级缩进 + 点引导符 + 页码），再按偏移写入书签；**continuous** 仅剥离 + 书签。
+  标题超 40 字截断以提高 `search_for` 命中率；定位在插入目录页**之前**完成。
+  同一标题多处出现时（文内交叉引用），取 **y 单调递增** 的命中，避免抢先定位
+  到前文引用。 *书签/目录均依赖文本层——若标题被栅格化（见保真损失）则定位不到。*
 - **水印**：`TextWriter` + 绕页心旋转 45° 的 `Matrix`，`opacity` 控制透明度。
   注意 `page.insert_text` 的 `rotate` 只接受 0/90/180/270，斜向必须走
   `TextWriter` 的 `morph`。

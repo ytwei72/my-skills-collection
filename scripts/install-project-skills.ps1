@@ -18,7 +18,7 @@
 #>
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('DocsRep', 'patent_management')]
+    [ValidateSet('DocsRep', 'patent_management', 'my-skills-collection')]
     [string]$Project,
 
     [string]$LibRoot = ''

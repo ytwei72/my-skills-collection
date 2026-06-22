@@ -33,6 +33,7 @@ my-skills-collection/
 ├── md-to-agent-response-html/
 ├── manifests/
 │   ├── DocsRep.json
+│   ├── my-skills-collection.json
 │   └── patent_management.json
 └── scripts/
     └── install-project-skills.ps1
@@ -48,6 +49,7 @@ git clone <本库 URL> E:\Develop\AI-Agents\my-skills-collection
 Set-Location E:\Develop\AI-Agents\my-skills-collection
 .\scripts\install-project-skills.ps1 -Project DocsRep
 .\scripts\install-project-skills.ps1 -Project patent_management
+.\scripts\install-project-skills.ps1 -Project my-skills-collection
 ```
 
 ## 日常更新
@@ -68,4 +70,4 @@ git pull
 
 ## 修改 manifest 中的项目路径
 
-编辑 `manifests/DocsRep.json` 或 `manifests/patent_management.json` 中的 `projectRoot` 字段。
+编辑 `manifests/DocsRep.json`、`manifests/patent_management.json` 或 `manifests/my-skills-collection.json` 中的 `projectRoot` 字段。
