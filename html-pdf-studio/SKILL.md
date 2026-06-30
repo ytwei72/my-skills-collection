@@ -1,6 +1,6 @@
 ---
 name: html-pdf-studio
-description: 把 HTML（本地文件或 http(s) URL）转换成 PDF。默认 continuous 连续单页（保留桌面布局、不分页、文本可选）；仅当用户明确要求标准分页/A4/页码/多页打印时才用 paged。另支持页眉页脚、PDF 书签（--bookmarks，优先于目录）、PDF 目录页（--toc）、水印、元数据、加密、合并、脱敏与预览自检。用户说"HTML转PDF""网页转PDF""单页/不分页/长图式PDF"或抱怨导出被分页/裁切时用本技能；用户说"书签/大纲"时加 --bookmarks；用户说"PDF目录/添加目录/更新目录"时加 --toc；禁止因 HTML 有章节/表格/目录就擅自改用 paged。
+description: 把 HTML 或 Markdown（本地文件或 http(s) URL）转换成 PDF。源为 .md/.markdown 时先按 md-to-rich-html 生成同名 .html（默认带文内目录 nav.toc），再转 PDF（默认 --bookmarks）。用户明确说不要目录/书签时，HTML 与 PDF 均不生成目录及书签。默认 continuous 连续单页；仅当用户明确要求标准分页/A4/页码/多页打印时才用 paged。另支持页眉页脚、PDF 目录页（--toc）、水印、元数据、加密、合并、脱敏与预览自检。用户说"MD转PDF""HTML转PDF""网页转PDF"或抱怨导出被分页/裁切时用本技能；用户说"PDF目录/添加目录/更新目录"时加 --toc；禁止因 HTML 有章节/表格/目录就擅自改用 paged。
 disable-model-invocation: true
 ---
 
@@ -17,6 +17,39 @@ disable-model-invocation: true
 > 与 `onepage-pdf` 的关系：本技能是其超集。`onepage-pdf` 只做"连续单页裁切"，
 > 本技能在沿用并重写该裁切内核的同时，新增 paged 分页、页眉页脚页码、书签目录、
 > 水印、元数据、加密、合并、URL 输入、预览自检等能力。
+
+## 源文件为 Markdown 时的前置流程
+
+当输入为 **`.md` / `.markdown`**（或用户说「MD 转 PDF / Markdown 转 PDF」）时，
+**必须先**调用 **`md-to-rich-html`** 技能（读取
+`.cursor/skills/md-to-rich-html/SKILL.md` 并按其流程执行），再进入本技能的 HTML→PDF
+步骤。**不得**跳过 HTML 中间稿直接把 MD 喂给 `html2pdf.py`。
+
+1. **读取** `md-to-rich-html` 技能并按其规范生成富 HTML。
+2. **输出路径**：默认与源 MD **同目录、同名改 `.html`**（除非用户指定其他路径）。
+3. **目录**：见下节「默认目录与书签」——默认在 HTML 中生成 `nav.toc` 文内目录。
+4. **后续**：以生成的 `.html` 作为本技能输入，按「工作流」审查 HTML、执行
+   `html2pdf.py`、校验 PDF。
+
+若用户同时给出 MD 与已有 HTML，**以用户指定为准**；未指定时优先 MD → 重新生成 HTML
+再转 PDF（避免 MD 已改而 HTML 过期）。
+
+## 默认目录与书签（Agent 硬规则）
+
+| 用户是否说明 | HTML（md-to-rich-html 或源 HTML） | PDF（html2pdf.py） |
+|---|---|---|
+| **未指明**（默认） | **带文内目录**：`nav.toc`（或等效 `#toc` / `.table-of-contents`），链到各 `h1..hN` 锚点 | **加 `--bookmarks`**（侧栏大纲；**不**默认加 `--toc` 目录页） |
+| **明确不要**（原话含「不要目录」「不要书签」「无目录」「无书签」等任一） | **不生成**文内目录块 | **不传** `--bookmarks` 与 `--toc` |
+| **只要 PDF 目录页**（「PDF 目录」「目录页」「添加目录页」等） | 按 `--toc` 规则剥离 HTML 文内目录 | 加 **`--toc`**（通常配合 paged；见下文） |
+
+要点：
+
+- 默认的「目录」指 **HTML 正文前的页内目录**；默认的「书签」指 PDF 阅读器侧栏
+  **`--bookmarks`**，二者独立启用、默认同时开启。
+- 用户说不要目录或不要书签时，**两者都不生成**（HTML 无 `nav.toc`，PDF 无
+  `--bookmarks` / `--toc`）。
+- **`--toc`（PDF 格式目录页）** 仍仅在用户**明确要求目录页**时使用；默认行为是
+  HTML 文内目录 + PDF 书签，**不是**插入 PDF 目录页。
 
 ## Agent 必读：模式选择（硬规则）
 
@@ -54,10 +87,15 @@ disable-model-invocation: true
 | 「内容很长 → 应该 A4 分页」 | 长内容正是 continuous 的强项；除非用户要分页 |
 | 「顺便加页眉页脚更专业 → 用 paged」 | 单页 PDF 一般不加 `{page}/{pages}` 页码；未要求分页则 **continuous** |
 
-### 用户要求「书签 / 大纲 / 侧栏导航」
+### PDF 书签（`--bookmarks`）
 
-当用户原话**明确出现**「书签」「加大纲」「侧栏导航」「PDF 大纲」等，且**未要求
-目录页**时，加 **`--bookmarks`**（可配合 `--toc-depth`）：
+**默认开启**（见「默认目录与书签」）：用户未说不要目录/书签时，转换命令**必须带
+`--bookmarks`**（可配合 `--toc-depth`）。用户原话**明确出现**「书签」「加大纲」
+「侧栏导航」「PDF 大纲」时同样加 `--bookmarks`。
+
+用户**明确不要目录或书签**时：**省略** `--bookmarks` 与 `--toc`。
+
+启用 `--bookmarks` 时的行为：
 
 1. **不改正文**：保留 HTML 文内目录（`nav.toc` 等），不插入目录页，页数不变。
 2. **仅写阅读器侧栏大纲**：由 HTML `h1..hN` 定位并生成 PDF 书签。
@@ -113,10 +151,15 @@ paged**。
 
 ### 命令模板（Agent 默认应执行这一条）
 
+**源为 MD 时**：先按 `md-to-rich-html` 生成 `input.html`（默认含 `nav.toc`），再执行：
+
 ```powershell
 .venv\Scripts\python.exe .cursor\skills\html-pdf-studio\scripts\html2pdf.py input.html `
-    -o output.pdf --width 1280 [--extra-css fixes.css] [--preview]
+    -o output.pdf --width 1280 --bookmarks --toc-depth 3 [--extra-css fixes.css] [--preview]
 ```
+
+**源已为 HTML 时**（同上，默认带 `--bookmarks`）。用户明确不要目录/书签时，去掉
+`--bookmarks`（且前置 MD→HTML 步骤也不生成 `nav.toc`）。
 
 `--mode continuous` 可写可不写（脚本默认即是）。**不要**在用户未要求时主动
 加上 `--mode paged`。
@@ -129,6 +172,12 @@ paged**。
   可设页边距、方向、缩放，配合页眉页脚与书签大纲。
 
 ## 工作流
+
+### 0. 识别输入格式
+
+- **`.md` / `.markdown`**：执行「源文件为 Markdown 时的前置流程」，得到 `.html` 后继续。
+- **`.html` / `.htm` / URL**：直接进入步骤 1。
+- 用户只要 PDF、未给路径：优先找同目录同名 `.md`，否则找 `.html`。
 
 ### 1. 先审查源 HTML（决定要不要 `--extra-css`）
 
@@ -153,12 +202,14 @@ paged**。
 
 从仓库根目录执行（PowerShell）。
 
-**默认路径（Agent 未获分页明确要求时执行此条）**：
+**默认路径（Agent 未获分页明确要求时执行此条；默认含书签）**：
 
 ```powershell
 .venv\Scripts\python.exe .cursor\skills\html-pdf-studio\scripts\html2pdf.py input.html `
-    -o output.pdf --width 1280 [--extra-css fixes.css] [--preview]
+    -o output.pdf --width 1280 --bookmarks --toc-depth 3 [--extra-css fixes.css] [--preview]
 ```
+
+用户明确不要目录/书签时，去掉 `--bookmarks`。
 
 **仅当用户明确要求标准分页时**：
 

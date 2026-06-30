@@ -1,6 +1,6 @@
 ---
 name: edu-typeset
-disable-model-invocation: false
+disable-model-invocation: true
 description: >
   按出版印刷标准对文档进行专业排版与格式化，生成高质量 .docx 文件。适用于：用户提交任何文档（教辅材料、讲义、报告、教案等）并要求"出版排版"、"专业格式"、"印刷标准"、"重新排版"、"格式规范化"时。
   支持多种文档类型，内置"英语教学辅导材料"标准模板（见 assets/template-en-edu.js）。
