@@ -91,6 +91,22 @@ disable-model-invocation: false
 - 多文件批量时：列出每个输出路径；若部分失败，单独标明原因。
 - 简要说明在浏览器中打开即可，无需冗长复述。
 
+## 脚本（可选，批量/快速转换）
+
+本 skill 附带一个参考实现脚本，位于本 skill 目录下：
+
+- `scripts/md_to_rich_html.js`
+
+适用场景：源为 **标准 Markdown**、需要**快速或批量**产出单文件 HTML（内联样式、深浅色自适应、可选侧栏目录）时，可直接调用脚本，无需逐篇手写。用法：
+
+```bash
+node .cursor/skills/md-to-rich-html/scripts/md_to_rich_html.js [--sidebar-toc] <input.md> [output.html]
+```
+
+- 省略 `output.html` 时，**与源文件同目录、同名改 `.html`**。
+- `--sidebar-toc`：生成带侧栏目录的版式。
+- 需要 Node 运行环境；非 Markdown 源或需要**定制 SVG 图表 / 特殊版式**时，仍按上文「工作流程」由 Agent 手写生成，脚本不覆盖这些场景。
+
 ## 参考实现
 
 本仓库中可参考的成品：`ReportsDoc/财务日常提效/财务日常工作的优化提效汇报.html`（布局、深浅色、SVG、移动端与 `viewBox` 处理）。
