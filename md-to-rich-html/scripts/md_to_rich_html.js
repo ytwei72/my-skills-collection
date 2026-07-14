@@ -380,11 +380,21 @@ const CSS = `
     }
     header.hero .intro-lines p {
       margin: 0 0 8px;
-      color: rgba(255, 255, 255, 0.94);
+      color: rgba(255, 255, 255, 0.96);
       font-size: 0.92rem;
       line-height: 1.55;
     }
     header.hero .intro-lines p:last-child { margin-bottom: 0; }
+    /* Hero 内联 code/strong 需高对比，避免被全局 accent 盖暗 */
+    header.hero code {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+    header.hero strong {
+      color: #fff;
+      font-weight: 700;
+    }
 
     /* ---------- 题目卡片 ---------- */
     ol { counter-reset: none; }
