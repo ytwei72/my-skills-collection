@@ -36,7 +36,8 @@ my-skills-collection/
 ├── manifests/
 │   ├── DocsRep.json
 │   ├── my-skills-collection.json
-│   └── patent_management.json
+│   ├── patent_management.json
+│   └── PhoneCodeScan.json
 └── scripts/
     └── install-project-skills.ps1
 ```
@@ -51,6 +52,7 @@ git clone <本库 URL> E:\Develop\AI-Agents\my-skills-collection
 Set-Location E:\Develop\AI-Agents\my-skills-collection
 .\scripts\install-project-skills.ps1 -Project DocsRep
 .\scripts\install-project-skills.ps1 -Project patent_management
+.\scripts\install-project-skills.ps1 -Project PhoneCodeScan
 .\scripts\install-project-skills.ps1 -Project my-skills-collection
 ```
 
@@ -66,10 +68,10 @@ git pull
 
 ## 业务项目 Git 约定
 
-- **不要**把 Junction 目录提交进 DocsRep / patent_management 的 Git。
+- **不要**把 Junction 目录提交进 DocsRep / patent_management / PhoneCodeScan 的 Git。
 - 各项目 `.gitignore` 已忽略本库链接的 skill 目录。
 - 克隆业务项目后须执行上方 install 脚本。
 
 ## 修改 manifest 中的项目路径
 
-编辑 `manifests/DocsRep.json`、`manifests/patent_management.json` 或 `manifests/my-skills-collection.json` 中的 `projectRoot` 字段。
+编辑 `manifests/DocsRep.json`、`manifests/patent_management.json`、`manifests/PhoneCodeScan.json` 或 `manifests/my-skills-collection.json` 中的 `projectRoot` 字段。
