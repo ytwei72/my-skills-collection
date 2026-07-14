@@ -9,6 +9,7 @@
     "feishu-doc-writer",
     "git-commit-push",
     "html-pdf-studio",
-    "md-to-agent-response-html"
+    "md-to-agent-response-html",
+    "pkg-disk-usage"
   ]
 }

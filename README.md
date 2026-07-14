@@ -15,6 +15,7 @@
 | `git-commit-push` | Git 提交与推送辅助 |
 | `html-pdf-studio` | HTML → PDF 导出 |
 | `md-to-agent-response-html` | Agent 回复摘要卡 + 详情双页 HTML |
+| `pkg-disk-usage` | 统计当前 Python 环境已安装包的磁盘占用 |
 
 > **不包含** `patent-*` 开头技能——各项目自行维护。
 
@@ -31,6 +32,7 @@ my-skills-collection/
 ├── git-commit-push/
 ├── html-pdf-studio/
 ├── md-to-agent-response-html/
+├── pkg-disk-usage/
 ├── manifests/
 │   ├── DocsRep.json
 │   ├── my-skills-collection.json
