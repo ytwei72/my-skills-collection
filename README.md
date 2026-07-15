@@ -7,6 +7,7 @@
 | Skill | 说明 |
 |-------|------|
 | `md-to-rich-html` | Markdown 等 → 单文件富表现 HTML |
+| `md-to-word` | Markdown → 规范美观的 Word(.docx)，表格列宽内容自适应 |
 | `md-to-html-slides` | Markdown → 单文件 HTML 翻页演示稿（`.slides.html`） |
 | `edu-typeset-skill` | 文档出版排版与格式规范化 |
 | `drawio-skill` | Draw.io 图表生成与编辑 |
@@ -24,6 +25,7 @@
 ```text
 my-skills-collection/
 ├── md-to-rich-html/
+├── md-to-word/
 ├── md-to-html-slides/
 ├── edu-typeset-skill/
 ├── drawio-skill/
