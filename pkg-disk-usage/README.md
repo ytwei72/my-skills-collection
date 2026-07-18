@@ -122,3 +122,45 @@ Agent 运行后会汇报类似内容：
 | 查**依赖关系/为什么装了某包** | 用 `pip show` / `pipdeptree` 等，本 skill 只做体积排名 |
 
 Agent 执行细节见 [SKILL.md](SKILL.md)。
+
+---
+
+## 在新项目中挂载本 Skill（目录 Junction）
+
+本 skill 放在共享库 `my-skills-collection` 里，不必拷贝进业务项目。在目标项目的 `.cursor/skills/` 下建一个指向本目录的 **Junction**（Windows 目录联接）即可；`git pull` 共享库后，各项目自动用到最新内容。
+
+推荐在 Cursor 里用自然语言让 Agent 创建链接（把路径换成你本机实际路径）。
+
+### 推荐说法（复制后改路径）
+
+```
+在当前项目的 .cursor/skills 目录下，用目录 Junction 挂载共享 skill：
+链接名 pkg-disk-usage，目标指向
+D:\Develop\my-skills-collection\pkg-disk-usage。
+若 .cursor\skills 不存在就先创建；若已有同名真实目录先别删，告诉我；
+若已有指向别处的 Junction 则先删再建。不要把 Junction 提交进 Git。
+```
+
+一次挂多个 skill 时可以说：
+
+```
+把 D:\Develop\my-skills-collection 里的这些 skill
+用 Junction 链到本项目 .cursor\skills\ 下（同名目录）：
+pkg-disk-usage、git-commit-push、md-to-rich-html。
+路径按本机实际位置调整；已存在且指向正确的跳过；
+不要提交这些链接。
+```
+
+### 等价的 PowerShell（自己执行时）
+
+```powershell
+$skillsDir = "D:\path\to\YourProject\.cursor\skills"
+$libSkill  = "D:\Develop\my-skills-collection\pkg-disk-usage"
+New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
+New-Item -ItemType Junction -Path (Join-Path $skillsDir "pkg-disk-usage") -Target $libSkill
+```
+
+### 注意
+
+- Junction 目标必须是本机上的绝对路径；换电脑时在那台机器上再挂一次即可。
+- 业务项目 `.gitignore` 应忽略这些链接目录，避免把共享 skill 误提交进项目仓库。

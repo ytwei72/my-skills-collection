@@ -34,48 +34,55 @@ my-skills-collection/
 ├── git-commit-push/
 ├── html-pdf-studio/
 ├── md-to-agent-response-html/
-├── pkg-disk-usage/
-├── manifests/
-│   ├── DocsRep.json
-│   ├── my-skills-collection.json
-│   ├── patent_management.json
-│   ├── PhoneCodeScan.json
-│   └── PhoneCodeScanMiniApp.json
-└── scripts/
-    └── install-project-skills.ps1
+└── pkg-disk-usage/
 ```
 
-## 首次安装（每台机器一次）
+## 首次挂载（每台机器、每个业务项目一次）
+
+1. 克隆本库到本机任意路径（各电脑路径可以不同）。
+2. 在业务项目里，把需要的 skill 用 **目录 Junction** 链到 `.cursor/skills/<skill名>`，目标指向本库中对应目录。
+
+推荐在 Cursor 里用自然语言让 Agent 创建（把路径换成你本机实际位置）：
+
+```
+把 D:\Develop\my-skills-collection 里的这些 skill
+用 Junction 链到本项目 .cursor\skills\ 下（同名目录）：
+md-to-rich-html、md-to-word、git-commit-push、pkg-disk-usage。
+若 .cursor\skills 不存在就先创建；已存在且指向正确的跳过；
+若已有指向别处的 Junction 则先删再建；若已有同名真实目录先别删，告诉我。
+不要把这些 Junction 提交进 Git。
+```
+
+等价 PowerShell 示例：
 
 ```powershell
-# 1. 克隆本库（若尚未克隆）
-git clone <本库 URL> E:\Develop\AI-Agents\my-skills-collection
+$libRoot   = "D:\Develop\my-skills-collection"   # 本库在本机的路径
+$skillsDir = "D:\path\to\YourProject\.cursor\skills"
+$names     = @("pkg-disk-usage", "git-commit-push")  # 按需增减
 
-# 2. 为各项目创建 Junction
-Set-Location E:\Develop\AI-Agents\my-skills-collection
-.\scripts\install-project-skills.ps1 -Project DocsRep
-.\scripts\install-project-skills.ps1 -Project patent_management
-.\scripts\install-project-skills.ps1 -Project PhoneCodeScan
-.\scripts\install-project-skills.ps1 -Project PhoneCodeScanMiniApp
-.\scripts\install-project-skills.ps1 -Project my-skills-collection
+New-Item -ItemType Directory -Force -Path $skillsDir | Out-Null
+foreach ($name in $names) {
+    $link   = Join-Path $skillsDir $name
+    $target = Join-Path $libRoot $name
+    if (Test-Path $link) { continue }
+    New-Item -ItemType Junction -Path $link -Target $target | Out-Null
+}
 ```
+
+换电脑时：在本机重新挂一次即可（Junction 目标必须是本机绝对路径）。单个 skill 的说明也可参见各 skill 目录下的 `README.md`（例如 `pkg-disk-usage`）。
 
 ## 日常更新
 
 ```powershell
-cd E:\Develop\AI-Agents\my-skills-collection
+cd D:\Develop\my-skills-collection   # 按本机路径调整
 git pull
-# 已安装的 Junction 自动指向新内容，无需再跑 install
+# 已挂载的 Junction 自动指向新内容，无需再建链接
 ```
 
-新增 Skill 时：在本库新建目录 → 更新 `manifests/*.json` → 再执行一次 `install-project-skills.ps1`。
+新增 Skill 时：在本库新建目录 → 在需要用到它的业务项目里再挂一条同名 Junction。
 
 ## 业务项目 Git 约定
 
-- **不要**把 Junction 目录提交进 DocsRep / patent_management / PhoneCodeScan / PhoneCodeScanMiniApp 的 Git。
-- 各项目 `.gitignore` 已忽略本库链接的 skill 目录。
-- 克隆业务项目后须执行上方 install 脚本。
-
-## 修改 manifest 中的项目路径
-
-编辑 `manifests/DocsRep.json`、`manifests/patent_management.json`、`manifests/PhoneCodeScan.json`、`manifests/PhoneCodeScanMiniApp.json` 或 `manifests/my-skills-collection.json` 中的 `projectRoot` 字段。
+- **不要**把 Junction 目录提交进业务项目的 Git。
+- 各项目 `.gitignore` 应忽略本库链接的 skill 目录。
+- 克隆业务项目后，在本机按上方方式重新挂载一次。
