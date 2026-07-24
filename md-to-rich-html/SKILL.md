@@ -7,7 +7,7 @@ description: >-
   format lists (e.g. md, txt, docx). Use when converting MD/TXT/HTML/CSV/JSON
   to HTML, batch-exporting listed formats to a web page, or when the user asks
   for 网页 / 网页版 / static HTML / single-file HTML output.
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 
 # 文档 → 富表现 HTML（多源格式）

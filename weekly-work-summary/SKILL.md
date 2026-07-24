@@ -1,6 +1,7 @@
 ---
 name: weekly-work-summary
 description: 将结构化的分模块工作记录（如"中控系统/链路/NLU/TTS-ASR"等分类列表）压缩为工作周报总结，支持自定义字数范围、总结格式（一段话/列表清单等）和输出内容格式（普通文本/Markdown/HTML）。当用户提供分点罗列的工作内容并要求"做周报/工作总结"、"总结成一段话/列表"、"压缩成200字左右/x字以内"、"输出成Markdown/HTML"时使用。适用于语音AI/中控/NLU/ASR/TTS等技术领域的周报，也可泛化到其他分模块技术工作的周报场景。
+disable-model-invocation: true
 ---
 
 # 周工作总结生成

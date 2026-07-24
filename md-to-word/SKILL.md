@@ -7,7 +7,7 @@ description: >-
   quote boxes, lists, fenced code blocks, embedded images and page numbers.
   Use when the user asks to convert MD/TXT to Word / .docx / 转 Word /
   转成 word / 导出 Word / Word 版.
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 
 # 文档 → 规范美观的 Word(.docx)
