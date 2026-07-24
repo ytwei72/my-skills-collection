@@ -82,11 +82,51 @@ git status -sb
 - 只 `git add` 与本次变更相关的文件（可多次 `git add <path>`）。
 - 提交前再次 `git diff --staged`，确认无多余文件、无密钥。
 
-### 3.2 提交说明
+### 3.2 提交说明（约定式提交规范）
 
-- 读 `git log -10 --oneline` 对齐本仓库用语风格。
-- 消息 1–2 句，说清 **为什么**，类型准确（feat / fix / refactor / docs / chore 等）。
-- PowerShell 多行提交信息示例：
+统一采用 **Conventional Commits（约定式提交）** 格式，描述正文用中文：
+
+```
+<type>(<scope>): <简短描述>
+<空行>
+[正文：说明「为什么」与关键取舍，可多行]
+<空行>
+[脚注：BREAKING CHANGE / 关联 issue 等，可选]
+```
+
+**Header（必填，第一行）规则**：
+
+- 格式 `type(scope): 描述`；`type` 必填、`scope` 可选（无合适范围时可省略括号，写成 `type: 描述`）。
+- `type` 用小写英文，`scope` 用小写英文/模块名，冒号后**一个空格**再接中文简短描述。
+- 描述用**祈使/陈述语气**、聚焦本次改动，**不加句号**，整行建议 ≤ 50 字符（中文按显示宽度酌情控制，不宜过长）。
+
+**type 取值**（对齐参考项目常用集合）：
+
+| type | 用途 |
+|------|------|
+| `feat` | 新增功能 |
+| `fix` | 修复缺陷 |
+| `refactor` | 重构（不改外部行为） |
+| `perf` | 性能优化 |
+| `docs` | 文档 |
+| `style` | 格式（空白、缩进、分号等，不影响逻辑） |
+| `test` | 测试 |
+| `build` | 构建系统 / 依赖 |
+| `ci` | CI 配置与脚本 |
+| `chore` | 杂项（不属以上类别的维护性改动） |
+| `config` | 配置调整（参考项目用法） |
+| `revert` | 回滚某次提交 |
+
+**scope**：填改动所在的模块/领域（如 `scan`、`ocr`、`auth`、`deploy`），保持与仓库既有 scope 用词一致；可读 `git log -20 --oneline` 对齐既有 type/scope 风格。
+
+**Body（正文，可选但推荐）**：与 Header 间**空一行**；1–2 句说清**为什么**改、关键取舍或影响面，而非罗列改了哪几行。
+
+**Footer（脚注，可选）**：
+
+- 不兼容变更用 `BREAKING CHANGE: <说明>`（或 Header type 后加 `!`，如 `feat(api)!: ...`）。
+- 关联问题用 `Closes #123` / `Refs #123`。
+
+PowerShell 多行提交信息示例：
 
 ```powershell
 $msg = @'
@@ -96,6 +136,13 @@ fix(auth): 修复权限缓存未随角色变更失效
 '@
 git add path\to\file1 path\to\file2
 git commit -m $msg
+```
+
+单行提交（无正文）示例：
+
+```powershell
+git add path\to\file
+git commit -m "docs(deploy): 更新端口配置和代理说明"
 ```
 
 ### 3.3 安全与 amend
