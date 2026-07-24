@@ -17,6 +17,8 @@
 | `html-pdf-studio` | HTML → PDF 导出 |
 | `md-to-agent-response-html` | Agent 回复摘要卡 + 详情双页 HTML |
 | `pkg-disk-usage` | 统计当前 Python 环境已安装包的磁盘占用 |
+| `weekly-work-summary` | 分模块工作记录 → 工作周报总结（可控字数/格式/输出类型） |
+| `skill-creator` | 创建、优化并评测 Cursor Agent Skill |
 
 > **不包含** `patent-*` 开头技能——各项目自行维护。
 
@@ -34,7 +36,9 @@ my-skills-collection/
 ├── git-commit-push/
 ├── html-pdf-studio/
 ├── md-to-agent-response-html/
-└── pkg-disk-usage/
+├── pkg-disk-usage/
+├── weekly-work-summary/
+└── skill-creator/
 ```
 
 ## 首次挂载（每台机器、每个业务项目一次）
