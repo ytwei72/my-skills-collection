@@ -18,6 +18,7 @@
 | `md-to-agent-response-html` | Agent 回复摘要卡 + 详情双页 HTML |
 | `pkg-disk-usage` | 统计当前 Python 环境已安装包的磁盘占用 |
 | `weekly-work-summary` | 分模块工作记录 → 工作周报总结（可控字数/格式/输出类型） |
+| `meeting-asr` | 会议发言录音 → 带说话人/时间戳的转写文稿（阿里云 NLS） |
 | `skill-creator` | 创建、优化并评测 Cursor Agent Skill |
 
 > **不包含** `patent-*` 开头技能——各项目自行维护。
@@ -38,6 +39,7 @@ my-skills-collection/
 ├── md-to-agent-response-html/
 ├── pkg-disk-usage/
 ├── weekly-work-summary/
+├── meeting-asr/
 └── skill-creator/
 ```
 

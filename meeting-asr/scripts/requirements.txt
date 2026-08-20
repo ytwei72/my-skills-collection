@@ -1,0 +1,2 @@
+boto3>=1.28.0
+aliyun-python-sdk-core>=2.13.0

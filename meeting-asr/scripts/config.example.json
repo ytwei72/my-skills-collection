@@ -1,0 +1,16 @@
+{
+  "s3": {
+    "access_key": "YOUR_EOS_ACCESS_KEY",
+    "secret_key": "YOUR_EOS_SECRET_KEY",
+    "endpoint": "http://eos-wuxi-5.cmecloud.cn",
+    "bucket": "aibs",
+    "prefix": "asr/audio_files/",
+    "presigned_endpoint_url": null
+  },
+  "aliyun": {
+    "access_key_id": "YOUR_ALIYUN_ACCESS_KEY_ID",
+    "access_key_secret": "YOUR_ALIYUN_ACCESS_KEY_SECRET",
+    "nls_app_key": "YOUR_NLS_APP_KEY",
+    "region_id": "cn-shanghai"
+  }
+}
