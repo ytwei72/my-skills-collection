@@ -13,6 +13,7 @@
 | `drawio-skill` | Draw.io 图表生成与编辑 |
 | `feishu-doc-reader` | 飞书文档读取 |
 | `feishu-doc-writer` | 飞书文档写入/覆盖 |
+| `bump-version` | 递增 VERSION / BUILD；一步完成「提交已有代码 + 升版本 + 再提交推送」 |
 | `git-commit-push` | Git 提交与推送辅助 |
 | `html-pdf-studio` | HTML → PDF 导出 |
 | `md-to-agent-response-html` | Agent 回复摘要卡 + 详情双页 HTML |
@@ -34,6 +35,7 @@ my-skills-collection/
 ├── drawio-skill/
 ├── feishu-doc-reader/
 ├── feishu-doc-writer/
+├── bump-version/
 ├── git-commit-push/
 ├── html-pdf-studio/
 ├── md-to-agent-response-html/

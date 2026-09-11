@@ -220,6 +220,7 @@ git push -u origin HEAD
 
 - **拆 PR / 多提交切片**：用户要拆分时用 `split-to-prs`，本技能不代替其规划步骤。
 - **开 GitHub PR**：用户要 PR 时用 `creating-pull-requests`（`gh pr create`），本技能只负责本地 git 与 push。
+- **升版本 / 构建号**：用户点名 `bump-version` 时走该技能。它已包含本技能：先提交推送已有代码，再升版本并再提交推送。**不必**先单独跑本技能再跑 `bump-version`。
 - **含中文 frontend 源码**：提交前若改过 `frontend/**/*.{vue,ts,tsx}`，遵守 `.cursor/rules/frontend-utf8-editing.mdc`（Node UTF-8 补丁、无 `????`）。
 - **与全局 user rule 的关系**：仓库默认「不主动 push」适用于**未**点名本技能的场景；用户点名 `git-commit-push` 即是对 push 的明确授权，优先遵循本技能。
 
