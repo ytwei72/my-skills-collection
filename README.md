@@ -21,6 +21,7 @@
 | `weekly-work-summary` | 分模块工作记录 → 工作周报总结（可控字数/格式/输出类型） |
 | `meeting-asr` | 会议发言录音 → 带说话人/时间戳的转写文稿（阿里云 NLS） |
 | `skill-creator` | 创建、优化并评测 Cursor Agent Skill |
+| `requirement-breakdown` | 一段话 → 需求分解与需求规范（对照已有需求更新或新建；成体系 / 单文件模板，自带模板） |
 
 > **不包含** `patent-*` 开头技能——各项目自行维护。
 
@@ -42,7 +43,8 @@ my-skills-collection/
 ├── pkg-disk-usage/
 ├── weekly-work-summary/
 ├── meeting-asr/
-└── skill-creator/
+├── skill-creator/
+└── requirement-breakdown/
 ```
 
 ## 首次挂载（每台机器、每个业务项目一次）
