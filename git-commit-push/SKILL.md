@@ -96,9 +96,10 @@ git status -sb
 
 **Header（必填，第一行）规则**：
 
-- 格式 `type(scope): 描述`；`type` 必填、`scope` 可选（无合适范围时可省略括号，写成 `type: 描述`）。
-- `type` 用小写英文，`scope` 用小写英文/模块名，冒号后**一个空格**再接中文简短描述。
+- 格式必须是 `type(scope): 描述`。`type` 与 `scope` **都必填**，禁止写成 `type: 描述`（对齐参考仓库 `wdo-kb`：`docs(progress): …`、`feat(collect): …`、`chore(version): …`）。
+- `type` 用小写英文，`scope` 用小写英文模块名或领域短名，冒号后**一个空格**再接中文简短描述。
 - 描述用**祈使/陈述语气**、聚焦本次改动，**不加句号**，整行建议 ≤ 50 字符（中文按显示宽度酌情控制，不宜过长）。
+- **提交前自检**：第一行必须匹配 `type(scope): 描述`，括号为英文半角且 scope 非空。不符合则改写后再执行 `git commit`，不要先提交再补 scope。
 
 **type 取值**（对齐参考项目常用集合）：
 
@@ -117,7 +118,7 @@ git status -sb
 | `config` | 配置调整（参考项目用法） |
 | `revert` | 回滚某次提交 |
 
-**scope**：填改动所在的模块/领域（如 `scan`、`ocr`、`auth`、`deploy`），保持与仓库既有 scope 用词一致；可读 `git log -20 --oneline` 对齐既有 type/scope 风格。
+**scope（必填）**：填改动所在的模块/领域（如 `progress`、`collect`、`auth`、`deploy`），保持与该仓库 `git log -20 --oneline` 里已有的 scope 用词一致。仓库还没有既有 scope 时，按本次改动领域取一个短词（如 `docs(env)`、`feat(hal)`、`chore(ide)`），不要省略括号。
 
 **Body（正文，可选但推荐）**：与 Header 间**空一行**；1–2 句说清**为什么**改、关键取舍或影响面，而非罗列改了哪几行。
 
